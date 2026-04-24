@@ -484,8 +484,14 @@ hex,type,role,file,section,description
 # ══════════════════════════════════════════════════════════════════
 ```json
 {
-  "version": "3.0",
-  "language": "python",
+  "version": "3.1",
+  "languages": ["Python", "TypeScript", "Cpp"],
+  "default_language": "python",
+  "language_dirs": {
+    "Python": "Python/",
+    "TypeScript": "TypeScript/",
+    "Cpp": "Cpp/"
+  },
   "interface_points": {
     "0xA1B2C1": { "type": "variable", "role": "output", "param_type": "number", "file": "calculator.py", "section": "算术赋值", "desc": "加法结果" },
     "0xA1B2C2": { "type": "variable", "role": "input", "param_type": "number", "file": "calculator.py", "section": "算术赋值", "desc": "加法左操作数" },
@@ -884,4 +890,68 @@ layers:
             target_hex: "0xD1E3D1"
             desc: "dict数据存储"
         imported_by: []
+
+# ── 多语言素材目录 ──
+# hex 编号跨语言通用，不同语言目录下同名文件共享相同的 hex 接口点
+# 核糖体根据目标语言选择对应目录下的素材进行拼装
+languages:
+  Python:
+    dir: Python/
+    ext: .py
+    desc: "Python 3 — 原始语言，完整支持"
+    status: complete
+  TypeScript:
+    dir: TypeScript/
+    ext: .ts
+    desc: "TypeScript (Node.js) — 按意图翻译，惯用写法"
+    status: complete
+  Cpp:
+    dir: Cpp/
+    ext: .cpp
+    desc: "C++17 — 按意图翻译，STL 惯用法"
+    status: complete
+
+# TypeScript 素材映射（与 Python 一一对应，hex 不变）
+TypeScript:
+  Level1:
+    calculator: { file: TypeScript/Level1/calculator.ts, hex_count: 26 }
+    console: { file: TypeScript/Level1/console.ts, hex_count: 26 }
+    control_flow: { file: TypeScript/Level1/control_flow.ts, hex_count: 30 }
+    function: { file: TypeScript/Level1/function.ts, hex_count: 22 }
+    data_structure: { file: TypeScript/Level1/data_structure.ts, hex_count: 41 }
+    string: { file: TypeScript/Level1/string.ts, hex_count: 29 }
+    OS: { file: TypeScript/Level1/OS.ts, hex_count: 24 }
+  Level2:
+    bubble_sort: { file: TypeScript/Level2/bubble_sort.ts, hex_count: 2 }
+    binary_search: { file: TypeScript/Level2/binary_search.ts, hex_count: 3 }
+    fibonacci: { file: TypeScript/Level2/fibonacci.ts, hex_count: 2 }
+    dfs_bfs: { file: TypeScript/Level2/dfs_bfs.ts, hex_count: 3 }
+    greedy_algorithm: { file: TypeScript/Level2/greedy_algorithm.ts, hex_count: 13 }
+    game_of_life: { file: TypeScript/Level2/game_of_life.ts, hex_count: 24 }
+  Level3:
+    account_management: { file: TypeScript/Level3/account_management.ts, hex_count: 30 }
+    actor_system: { file: TypeScript/Level3/actor_system.ts, hex_count: 24 }
+    api_server: { file: TypeScript/Level3/api_server.ts, hex_count: 35 }
+
+# C++ 素材映射（与 Python 一一对应，hex 不变）
+Cpp:
+  Level1:
+    calculator: { file: Cpp/Level1/calculator.cpp, hex_count: 26 }
+    console: { file: Cpp/Level1/console.cpp, hex_count: 26 }
+    control_flow: { file: Cpp/Level1/control_flow.cpp, hex_count: 30 }
+    function: { file: Cpp/Level1/function.cpp, hex_count: 22 }
+    data_structure: { file: Cpp/Level1/data_structure.cpp, hex_count: 41 }
+    string: { file: Cpp/Level1/string.cpp, hex_count: 29 }
+    OS: { file: Cpp/Level1/OS.cpp, hex_count: 24 }
+  Level2:
+    bubble_sort: { file: Cpp/Level2/bubble_sort.cpp, hex_count: 2 }
+    binary_search: { file: Cpp/Level2/binary_search.cpp, hex_count: 3 }
+    fibonacci: { file: Cpp/Level2/fibonacci.cpp, hex_count: 2 }
+    dfs_bfs: { file: Cpp/Level2/dfs_bfs.cpp, hex_count: 3 }
+    greedy_algorithm: { file: Cpp/Level2/greedy_algorithm.cpp, hex_count: 13 }
+    game_of_life: { file: Cpp/Level2/game_of_life.cpp, hex_count: 24 }
+  Level3:
+    account_management: { file: Cpp/Level3/account_management.cpp, hex_count: 30 }
+    actor_system: { file: Cpp/Level3/actor_system.cpp, hex_count: 24 }
+    api_server: { file: Cpp/Level3/api_server.cpp, hex_count: 35 }
 ```

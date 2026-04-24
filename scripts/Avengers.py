@@ -975,21 +975,25 @@ def _parse_cross_ref_dict(item):
 
 
 def parse_cross_file_reference(ref_string):
-    """Parse a cross-file reference like 'OS.py.0xB1C4B3' into (filename, hex_code).
+    """Parse a cross-file reference like 'OS.py.0xB1B2C3' into (filename, hex_code).
+
+    Supports multi-language file extensions: .py, .ts, .cpp, .h, .java, etc.
+    Also handles language-prefixed paths like 'TypeScript/Level1/OS.ts.0xB1C4B3'.
 
     Returns:
         (filename, hex_code) if valid cross-file reference
         (None, hex_code) if it's a plain hex code
         (None, None) if invalid
     """
-    # Pattern: something.py.0xHEXCODE or just 0xHEXCODE
-    match = re.match(r'^([A-Za-z_]\w*\.py)\.(0x[0-9A-Fa-f]{6})$', ref_string.strip())
+    ref_string = ref_string.strip()
+    # Pattern: path/to/FileName.ext.0xHEXCODE or just 0xHEXCODE
+    match = re.match(r'^((?:[A-Za-z_][\w/]*/)*[A-Za-z_]\w*\.\w+)\.(0x[0-9A-Fa-f]{6})$', ref_string)
     if match:
         return match.group(1), match.group(2)
 
     # Plain hex code
-    if re.match(r'^0x[0-9A-Fa-f]{6}$', ref_string.strip()):
-        return None, ref_string.strip()
+    if re.match(r'^0x[0-9A-Fa-f]{6}$', ref_string):
+        return None, ref_string
 
     return None, None
 
@@ -1066,9 +1070,9 @@ def find_cross_file_references(material_path):
 
     refs = []
 
-    # Match inline reference annotations: → OS.py.0xB1C4B3 or → 0xD0E1F2
-    # Patterns: "→" followed by optional filename.hex or just hex
-    ref_patterns = re.findall(r'→\s*([A-Za-z_]\w*\.py\.)?(0x[0-9A-Fa-f]{6})', content)
+    # Match inline reference annotations: → OS.py.0xB1C4B3 or → TypeScript/Level1/OS.ts.0xB1C4B3 or → 0xD0E1F2
+    # Patterns: "→" followed by optional path/filename.ext. or just hex
+    ref_patterns = re.findall(r'→\s*((?:[A-Za-z_][\w/]*/)*[A-Za-z_]\w*\.\w+\.)?(0x[0-9A-Fa-f]{6})', content)
     for filename_part, hex_code in ref_patterns:
         if filename_part:
             target_file = filename_part.rstrip('.')
@@ -1223,11 +1227,15 @@ def find_layerfile(material_path):
 
 
 def find_library(material_path):
-    """Search upward from material to find the code library root."""
+    """Search upward from material to find the code library root.
+
+    Supports multi-language directories: Python/, TypeScript/, Cpp/
+    """
     material_dir = os.path.dirname(os.path.abspath(material_path))
     check = material_dir
+    lang_dirs = ['Level1', 'Level2', 'Level3', 'Python', 'TypeScript', 'Cpp']
     while check != os.path.dirname(check):
-        if any(os.path.isdir(os.path.join(check, l)) for l in ['Level1', 'Level2', 'Level3']):
+        if any(os.path.isdir(os.path.join(check, l)) for l in lang_dirs):
             return check
         check = os.path.dirname(check)
     return None
