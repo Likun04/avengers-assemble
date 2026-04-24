@@ -1,44 +1,42 @@
 # Level 1: String Operations
-# Interface: 0xE1F2A3=input(原始字符串), 0xB4C5D6=output(处理结果)
+# ══════════════════════════════════════════════════════════════════
+# 所有外部可注入部分均以 hex 占位符标记，详见 layerfile.md 注册
 
 ## Basic String
-length = len(0xE1F2A3)
-upper = 0xE1F2A3.upper()
-lower = 0xE1F2A3.lower()
-stripped = "  hello  ".strip()
+0xE1F2C1 = len(0xE1F2C2)
+0xE1F2C3 = 0xE1F2C2.upper()
+0xE1F2C4 = 0xE1F2C2.lower()
+0xE1F2C5 = 0xE1F2C6.strip()
 
 ## String Format (f-string)
-name = "Alice"
-age = 30
-msg = f"{name} is {age} years old"
-pi_str = f"Pi is {3.14159:.2f}"
+0xE1F2D1 = 0xE1F2D2
+0xE1F2D3 = 0xE1F2D4
+0xE1F2D5 = f"{0xE1F2D1} is {0xE1F2D3} years old"
+0xE1F2D6 = f"Pi is {0xE1F2D7:0xE1F2D8}"
 
 ## String Split & Join
-parts = 0xE1F2A3.split(",")
-0xB4C5D6 = "-".join(parts)
+0xE1F2E1 = 0xE1F2E2.split(0xE1F2E3)
+0xE1F2E4 = 0xE1F2E5.join(0xE1F2E1)
 
 ## String Replace
-0xB4C5D6 = 0xE1F2A3.replace("world", "Python")
+0xE1F2F1 = 0xE1F2F2.replace(0xE1F2F3, 0xE1F2F4)
 
 ## String Find
-pos = 0xE1F2A3.find("world")
-has_sub = "world" in 0xE1F2A3
+0xE1F3B1 = 0xE1F3B2.find(0xE1F3B3)
+0xE1F3B4 = 0xE1F3B3 in 0xE1F3B2
 
 ## Regex
 import re
-emails = re.findall(r"\w+@\w+\.\w+", 0xE1F2A3)
-cleaned = re.sub(r"[^a-zA-Z0-9]", "", 0xE1F2A3)
-is_match = re.match(r"^\d+$", "12345")
+0xE1F3C1 = re.findall(0xE1F3C2, 0xE1F3C3)
+0xE1F3C4 = re.sub(0xE1F3C5, 0xE1F3C6, 0xE1F3C3)
+0xE1F3C7 = re.match(0xE1F3C8, 0xE1F3C9)
 
 ## String to List (Character)
-chars = list(0xE1F2A3)
+0xE1F3D1 = list(0xE1F3D2)
 
 ## Multiline String
-template = """Line 1
-Line 2
-Line 3
-"""
+0xE1F3E1 = 0xE1F3E2
 
 ## Encode / Decode
-encoded = 0xE1F2A3.encode("utf-8")
-decoded = encoded.decode("utf-8")
+0xE1F3F1 = 0xE1F3F2.encode(0xE1F3F3)
+0xE1F3F4 = 0xE1F3F1.decode(0xE1F3F3)

@@ -1,61 +1,62 @@
 # Level 3: Basic API Server (using built-in http.server)
-# Interface: 0xC1D2E3=input(主机地址), 0xF4A5B6=input(端口), 0xB7C8D9=input-output(数据源)
-# References: 0x566778→Level1/OS.py(JSON序列化), 0x889900→Level1/data_structure.py(数据存储)
+# ══════════════════════════════════════════════════════════════════
+# 所有外部可注入部分均以 hex 占位符标记，详见 layerfile.md 注册
+# References: 0x566778→OS.py.0xB1C4C3(JSON序列化), 0x889900→data_structure.py.0xD1E3D1(dict存储)
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 
-database = {                    # 0x889900: 数据存储结构
-    "items": [
-        {"id": 1, "name": "Apple", "price": 3.5},
-        {"id": 2, "name": "Banana", "price": 2.0},
+0xC1F4C1 = {                    # → 0x889900: 数据存储结构
+    0xC1F4C2: [
+        {0xC1F4C3: 0xC1F4C4, 0xC1F4C5: 0xC1F4C6, 0xC1F4C7: 0xC1F4C8},
+        {0xC1F4C3: 0xC1F4C9, 0xC1F4C5: 0xC1F4D1, 0xC1F4C7: 0xC1F4D2},
     ]
 }
 
-class APIHandler(BaseHTTPRequestHandler):
-    def _send_json(self, data, status=200):    # 0x566778: JSON序列化响应
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json")
+class 0xC1F4D3(BaseHTTPRequestHandler):
+    def 0xC1F4D4(self, 0xC1F4D5, 0xC1F4D6=0xC1F4D7):    # → 0x566778: JSON序列化响应
+        self.send_response(0xC1F4D6)
+        self.send_header(0xC1F4D8, 0xC1F4D9)
         self.end_headers()
-        self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
+        self.wfile.write(json.dumps(0xC1F4D5, ensure_ascii=False).encode(0xC1F4E1))
 
     def do_GET(self):
-        if self.path == "/items":
-            self._send_json(database["items"])
-        elif self.path.startswith("/items/"):
-            item_id = int(self.path.split("/")[-1])
-            item = next((i for i in database["items"] if i["id"] == item_id), None)
-            if item:
-                self._send_json(item)
+        if self.path == 0xC1F4E2:
+            self.0xC1F4D4(0xC1F4C1[0xC1F4C2])
+        elif self.path.startswith(0xC1F4E3):
+            0xC1F4E4 = int(self.path.split(0xC1F4E5)[-1])
+            0xC1F4E6 = next((0xC1F4E7 for 0xC1F4E7 in 0xC1F4C1[0xC1F4C2] if 0xC1F4E7[0xC1F4C3] == 0xC1F4E4), None)
+            if 0xC1F4E6:
+                self.0xC1F4D4(0xC1F4E6)
             else:
-                self._send_json({"error": "Not found"}, status=404)
+                self.0xC1F4D4({0xC1F4E8: 0xC1F4E9}, status=0xC1F4F1)
         else:
-            self._send_json({"message": "API is running. Try /items"}, status=200)
+            self.0xC1F4D4({0xC1F4F2: 0xC1F4F3}, status=0xC1F4D7)
 
     def do_POST(self):
-        if self.path == "/items":
-            content_length = int(self.headers["Content-Length"])
-            body = json.loads(self.rfile.read(content_length))
-            new_id = max(i["id"] for i in database["items"]) + 1 if database["items"] else 1
-            body["id"] = new_id
-            database["items"].append(body)
-            self._send_json(body, status=201)
+        if self.path == 0xC1F4E2:
+            0xC1F4F4 = int(self.headers[0xC1F4F5])
+            0xC1F4F6 = json.loads(self.rfile.read(0xC1F4F4))
+            0xC1F4F7 = max(0xC1F4E7[0xC1F4C3] for 0xC1F4E7 in 0xC1F4C1[0xC1F4C2]) + 1 if 0xC1F4C1[0xC1F4C2] else 1
+            0xC1F4F6[0xC1F4C3] = 0xC1F4F7
+            0xC1F4C1[0xC1F4C2].append(0xC1F4F6)
+            self.0xC1F4D4(0xC1F4F6, status=0xC1F4F8)
         else:
-            self._send_json({"error": "Endpoint not found"}, status=404)
+            self.0xC1F4D4({0xC1F4E8: 0xC1F4F9}, status=0xC1F4F1)
 
-    def log_message(self, format, *args):
-        print(f"[API] {args[0]}")
+    def log_message(self, 0xC1F5B1, *0xC1F5B2):
+        print(f"[API] {0xC1F5B2[0]}")
 
 
-def run_server(0xC1D2E3="localhost", 0xF4A5B6=8080):
-    server = HTTPServer((0xC1D2E3, 0xF4A5B6), APIHandler)
-    print(f"Server running at http://{0xC1D2E3}:{0xF4A5B6}")
-    print("Endpoints:")
-    print("  GET  /items     - List all items")
-    print("  GET  /items/<id> - Get item by ID")
-    print("  POST /items     - Create new item")
+def 0xC1F5B3(0xC1F5B4=0xC1F5B5, 0xC1F5B6=0xC1F5B7):
+    0xC1F5B8 = HTTPServer((0xC1F5B4, 0xC1F5B6), 0xC1F4D3)
+    print(f"Server running at http://{0xC1F5B4}:{0xC1F5B6}")
+    print(0xC1F5B9)
+    print(f"  GET  {0xC1F4E2}     - List all items")
+    print(f"  GET  {0xC1F4E3} - Get item by ID")
+    print(f"  POST {0xC1F4E2}     - Create new item")
     try:
-        server.serve_forever()
+        0xC1F5B8.serve_forever()
     except KeyboardInterrupt:
-        print("\nServer stopped.")
-        server.server_close()
+        print(0xC1F5C1)
+        0xC1F5B8.server_close()

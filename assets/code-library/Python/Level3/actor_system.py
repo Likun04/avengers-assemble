@@ -1,52 +1,53 @@
 # Level 3: Actor System
-# Interface: 0xA1B2C3=input(Actor名称), 0xD4E5F6=input(消息内容), 0xF7A8B9=input(消息处理函数)
-# References: 0x112233→Level1/data_structure.py(消息队列), 0x445566→Level1/function.py(处理器注册)
+# ══════════════════════════════════════════════════════════════════
+# 所有外部可注入部分均以 hex 占位符标记，详见 layerfile.md 注册
+# References: 0x112233→data_structure.py.0xD1E4F1(消息队列deque)
 
 from collections import deque
 
-class Actor:
-    def __init__(self, 0xA1B2C3, handler=None):
-        self.name = 0xA1B2C3
-        self.mailbox = deque()     # 0x112233: 消息队列
-        self.handler = handler or self.default_handler
-        self.running = False
+class 0xA1D4C1:
+    def __init__(self, 0xA1D4C2, 0xA1D4C3=None):
+        self.0xA1D4C4 = 0xA1D4C2
+        self.0xA1D4C5 = deque()     # → 0x112233: 消息队列
+        self.0xA1D4C6 = 0xA1D4C3 or self.0xA1D4C7
+        self.0xA1D4C8 = False
 
-    def default_handler(self, 0xD4E5F6, sender):
-        print(f"[{self.name}] Received from {sender}: {0xD4E5F6}")
+    def 0xA1D4C7(self, 0xA1D4C9, 0xA1D4D1):
+        print(f"[{self.0xA1D4C4}] Received from {0xA1D4D1}: {0xA1D4C9}")
 
-    def send(self, 0xD4E5F6, sender="system"):
-        self.mailbox.append((0xD4E5F6, sender))
+    def 0xA1D4D2(self, 0xA1D4C9, 0xA1D4D3=0xA1D4D4):
+        self.0xA1D4C5.append((0xA1D4C9, 0xA1D4D3))
 
-    def process_all(self):
-        self.running = True
-        while self.mailbox:
-            0xD4E5F6, sender = self.mailbox.popleft()
-            self.handler(0xD4E5F6, sender)
-        self.running = False
+    def 0xA1D4D5(self):
+        self.0xA1D4C8 = True
+        while self.0xA1D4C5:
+            0xA1D4C9, 0xA1D4D1 = self.0xA1D4C5.popleft()
+            self.0xA1D4C6(0xA1D4C9, 0xA1D4D1)
+        self.0xA1D4C8 = False
 
 
-class ActorSystem:
+class 0xA1D4D6:
     def __init__(self):
-        self.actors = {}
+        self.0xA1D4D7 = {}
 
-    def register(self, actor):     # 0x445566: 处理器注册
-        self.actors[actor.name] = actor
-        print(f"Registered actor: {actor.name}")
+    def 0xA1D4D8(self, 0xA1D4D9):     # → 0x445566: 处理器注册
+        self.0xA1D4D7[0xA1D4D9.0xA1D4C4] = 0xA1D4D9
+        print(f"Registered actor: {0xA1D4D9.0xA1D4C4}")
 
-    def send(self, target_name, 0xD4E5F6, sender="system"):
-        if target_name in self.actors:
-            self.actors[target_name].send(0xD4E5F6, sender)
+    def 0xA1D4D2(self, 0xA1D4E1, 0xA1D4C9, 0xA1D4D3=0xA1D4D4):
+        if 0xA1D4E1 in self.0xA1D4D7:
+            self.0xA1D4D7[0xA1D4E1].0xA1D4D2(0xA1D4C9, 0xA1D4D3)
         else:
-            print(f"Unknown actor: {target_name}")
+            print(f"Unknown actor: {0xA1D4E1}")
 
-    def process_all(self, actor_name):
-        if actor_name in self.actors:
-            self.actors[actor_name].process_all()
+    def 0xA1D4E2(self, 0xA1D4E3):
+        if 0xA1D4E3 in self.0xA1D4D7:
+            self.0xA1D4D7[0xA1D4E3].0xA1D4D5()
 
-    def broadcast(self, 0xD4E5F6, sender="system"):
-        for name in self.actors:
-            self.actors[name].send(0xD4E5F6, sender)
+    def 0xA1D4E4(self, 0xA1D4C9, 0xA1D4D3=0xA1D4D4):
+        for 0xA1D4E5 in self.0xA1D4D7:
+            self.0xA1D4D7[0xA1D4E5].0xA1D4D2(0xA1D4C9, 0xA1D4D3)
 
-    def process_all_actors(self):
-        for name, actor in self.actors.items():
-            actor.process_all()
+    def 0xA1D4E6(self):
+        for 0xA1D4E5, 0xA1D4E7 in self.0xA1D4D7.items():
+            0xA1D4E7.0xA1D4D5()

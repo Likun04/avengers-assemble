@@ -1,60 +1,60 @@
 # Level 1: Control Flow
-# No external interface points — pure control structures
+# ══════════════════════════════════════════════════════════════════
+# 所有外部可注入部分均以 hex 占位符标记，详见 layerfile.md 注册
 
 ## If-Else
-score = 85
-if score >= 90:
-    grade = "A"
-elif score >= 80:
-    grade = "B"
-elif score >= 70:
-    grade = "C"
+if 0xC1D2C1 >= 0xC1D2C2:
+    0xC1D2C3 = 0xC1D2C4
+elif 0xC1D2C1 >= 0xC1D2C5:
+    0xC1D2C3 = 0xC1D2C6
+elif 0xC1D2C1 >= 0xC1D2C7:
+    0xC1D2C3 = 0xC1D2C8
 else:
-    grade = "F"
+    0xC1D2C3 = 0xC1D2C9
 
 ## For Loop (Range)
-for i in range(10):
-    print(i)
+for 0xC1D2D1 in range(0xC1D2D2):
+    print(0xC1D2D1)
 
 ## For Loop (Iterable)
-fruits = ["apple", "banana", "cherry"]
-for fruit in fruits:
-    print(fruit)
+0xC1D2E1 = [0xC1D2E2, 0xC1D2E3, 0xC1D2E4]
+for 0xC1D2E5 in 0xC1D2E1:
+    print(0xC1D2E5)
 
 ## For Loop (Enumerate)
-items = ["a", "b", "c"]
-for index, item in enumerate(items):
-    print(f"{index}: {item}")
+0xC1D2F1 = [0xC1D2F2, 0xC1D2F3, 0xC1D2F4]
+for 0xC1D3B1, 0xC1D3B2 in enumerate(0xC1D2F1):
+    print(f"{0xC1D3B1}: {0xC1D3B2}")
 
 ## While Loop
-count = 0
-while count < 10:
-    print(count)
-    count += 1
+0xC1D3C1 = 0xC1D3C2
+while 0xC1D3C1 < 0xC1D3C3:
+    print(0xC1D3C1)
+    0xC1D3C1 += 0xC1D3C4
 
 ## Break
-for i in range(100):
-    if i == 5:
+for 0xC1D3D1 in range(0xC1D3D2):
+    if 0xC1D3D1 == 0xC1D3D3:
         break
-    print(i)
+    print(0xC1D3D1)
 
 ## Continue
-for i in range(10):
-    if i % 2 == 0:
+for 0xC1D3E1 in range(0xC1D3E2):
+    if 0xC1D3E1 % 0xC1D3E3 == 0:
         continue
-    print(i)
+    print(0xC1D3E1)
 
 ## Nested Loops
-for i in range(3):
-    for j in range(3):
-        print(f"({i}, {j})")
+for 0xC1D3F1 in range(0xC1D3F2):
+    for 0xC1D4B1 in range(0xC1D4B2):
+        print(f"({0xC1D3F1}, {0xC1D4B1})")
 
 ## Try-Except
 try:
-    result = 10 / 0
-except ZeroDivisionError:
-    print("Cannot divide by zero")
-except Exception as e:
-    print(f"Error: {e}")
+    0xC1D4C1 = 0xC1D4C2 / 0xC1D4C3
+except 0xC1D4C4:
+    print(0xC1D4C5)
+except Exception as 0xC1D4C6:
+    print(f"0xC1D4C7{0xC1D4C6}")
 finally:
-    print("Done")
+    print(0xC1D4C8)

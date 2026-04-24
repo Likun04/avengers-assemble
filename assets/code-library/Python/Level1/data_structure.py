@@ -1,49 +1,50 @@
 # Level 1: Data Structures
-# Interface: 0xD1E2F3=input-output(数据集合), 0xA4B5C6=input(元素)
+# ══════════════════════════════════════════════════════════════════
+# 所有外部可注入部分均以 hex 占位符标记，详见 layerfile.md 注册
 
 ## List Operations
-items = [1, 2, 3, 4, 5]
-items.append(0xA4B5C6)
-items.insert(0, 0xA4B5C6)
-items.pop()
-items.remove(3)
-sliced = items[1:4]
-length = len(items)
+0xD1E2C1 = [0xD1E2C2, 0xD1E2C3, 0xD1E2C4, 0xD1E2C5, 0xD1E2C6]
+0xD1E2C1.append(0xD1E2C7)
+0xD1E2C1.insert(0xD1E2C8, 0xD1E2C7)
+0xD1E2C1.pop()
+0xD1E2C1.remove(0xD1E2C9)
+0xD1E2D1 = 0xD1E2C1[0xD1E2D2:0xD1E2D3]
+0xD1E2E1 = len(0xD1E2C1)
 
 ## List Comprehension
-squares = [x**2 for x in range(10)]
-evens = [x for x in range(20) if x % 2 == 0]
+0xD1E2F1 = [0xD1E2F2**0xD1E2F3 for 0xD1E2F2 in range(0xD1E2F4)]
+0xD1E3C1 = [0xD1E3C2 for 0xD1E3C2 in range(0xD1E3C3) if 0xD1E3C2 % 0xD1E3C4 == 0]
 
 ## Dict Operations
-user = {"name": "Alice", "age": 30}
-user["email"] = "a@b.com"
-age = user.get("age", 0)
-keys = list(user.keys())
-values = list(user.values())
-for key, val in user.items():
-    print(f"{key}: {val}")
+0xD1E3D1 = {0xD1E3D2: 0xD1E3D3, 0xD1E3D4: 0xD1E3D5}
+0xD1E3D1[0xD1E3D6] = 0xD1E3D7
+0xD1E3E1 = 0xD1E3D1.get(0xD1E3D4, 0xD1E3E2)
+0xD1E3E3 = list(0xD1E3D1.keys())
+0xD1E3E4 = list(0xD1E3D1.values())
+for 0xD1E3E5, 0xD1E3E6 in 0xD1E3D1.items():
+    print(f"{0xD1E3E5}: {0xD1E3E6}")
 
 ## Dict Comprehension
-squared = {x: x**2 for x in range(5)}
+0xD1E3F1 = {0xD1E3F2: 0xD1E3F2**0xD1E3F3 for 0xD1E3F2 in range(0xD1E3F4)}
 
 ## Set Operations
-a = {1, 2, 3, 4}
-b = {3, 4, 5, 6}
-union = a | b
-intersection = a & b
-difference = a - b
+0xD1E4B1 = {0xD1E4B2, 0xD1E4B3, 0xD1E4B4, 0xD1E4B5}
+0xD1E4B6 = {0xD1E4B4, 0xD1E4B5, 0xD1E4B7, 0xD1E4B8}
+0xD1E4C1 = 0xD1E4B1 | 0xD1E4B6
+0xD1E4C2 = 0xD1E4B1 & 0xD1E4B6
+0xD1E4C3 = 0xD1E4B1 - 0xD1E4B6
 
 ## Tuple (Immutable)
-point = (3, 4)
-x, y = point
+0xD1E4D1 = (0xD1E4D2, 0xD1E4D3)
+0xD1E4D4, 0xD1E4D5 = 0xD1E4D1
 
 ## Stack (using list)
-stack = []
-stack.append(0xA4B5C6)
-top = stack.pop()
+0xD1E4E1 = []
+0xD1E4E1.append(0xD1E4E2)
+0xD1E4E3 = 0xD1E4E1.pop()
 
 ## Queue (using collections.deque)
 from collections import deque
-queue = deque()
-queue.append(0xA4B5C6)
-front = queue.popleft()
+0xD1E4F1 = deque()
+0xD1E4F1.append(0xD1E4F2)
+0xD1E4F3 = 0xD1E4F1.popleft()

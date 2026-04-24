@@ -1,31 +1,31 @@
 # Level 1: Console I/O
-# Interface: 0xF1A2B3=input(提示文本), 0xC4D5E6=output(用户输入)
+# ══════════════════════════════════════════════════════════════════
+# 所有外部可注入部分均以 hex 占位符标记，详见 layerfile.md 注册
 
 ## Print
-print("Hello, World!")
-print("Name:", "Alice", "Age:", 30)
+print(0xF1A2C1)
+print(0xF1A2C2, 0xF1A2C3, 0xF1A2C4, 0xF1A2C5)
 
 ## Input
-0xC4D5E6 = input(0xF1A2B3)
+0xF1A2D1 = input(0xF1A2D2)
 
-## Formatted Print
-price = 9.99
-print(f"Price: ¥{price:.2f}")
-print(f"{'Item':<15} {'Price':>8}")
-print(f"{'Apple':<15} {3.5:>8.2f}")
+## Formatted Print (f-string)
+0xF1A2E1 = 0xF1A2E2
+print(f"0xF1A2E3{0xF1A2E1}:0xF1A2E4{0xF1A2E1:0xF1A2E5}")
+print(f"0xF1A2F1{0xF1A2F2:0xF1A2F3} 0xF1A2F4{0xF1A2F5:0xF1A2F6}")
 
 ## Print to stderr
 import sys
-print("Error message", file=sys.stderr)
+print(0xF1B3C1, file=sys.stderr)
 
 ## Basic Logging
 import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logging.info("This is info")
-logging.warning("This is warning")
-logging.error("This is error")
+logging.basicConfig(level=0xF1B3D1, format=0xF1B3D2)
+logging.info(0xF1B3D3)
+logging.warning(0xF1B3D4)
+logging.error(0xF1B3D5)
 
 ## Print Table
-data = [("Alice", 30), ("Bob", 25)]
-for name, age in data:
-    print(f"{name:10} | {age:3}")
+0xF1B3E1 = [(0xF1B3E2, 0xF1B3E3), (0xF1B3E4, 0xF1B3E5)]
+for 0xF1B3F1, 0xF1B3F2 in 0xF1B3E1:
+    print(f"{0xF1B3F1:0xF1B3F3} | {0xF1B3F2:0xF1B3F4}")

@@ -1,26 +1,34 @@
 # Level 1: Calculator — Basic Arithmetic & Variable Operations
-# Interface: 0xA1B2C3=input(操作数A), 0xD4E5F6=input(操作数B), 0xF7A8B9=output(运算结果)
+# ══════════════════════════════════════════════════════════════════
+# 所有外部可注入部分均以 hex 占位符标记，详见 layerfile.md 注册
 
 ## Assignment and Arithmetic
-0xF7A8B9 = 0xA1B2C3 + 0xD4E5F6
+0xA1B2C1 = 0xA1B2C2 + 0xA1B2C3
+0xA1B2D1 = 0xA1B2D2 - 0xA1B2D3
+0xA1B2E1 = 0xA1B2E2 * 0xA1B2E3
+0xA1B2F1 = 0xA1B2F2 / 0xA1B2F3
 
 ## Increment / Decrement
-counter = 0
-counter = counter + 1
-counter += 1
-counter -= 1
+0xA1C3B1 = 0xA1C3B2
+0xA1C3B1 = 0xA1C3B1 + 0xA1C3B3
+0xA1C3B1 += 0xA1C3B3
+0xA1C3B1 -= 0xA1C3B3
 
 ## Type Conversion
-raw = "42"
-num = int(raw)
-decimal = float(num)
-text = str(num)
-rounded = round(3.14159, 2)
+0xA1D4B1 = 0xA1D4B2
+0xA1D4C1 = int(0xA1D4B1)
+0xA1D4D1 = float(0xA1D4C1)
+0xA1D4E1 = str(0xA1D4C1)
+0xA1D4F1 = round(0xA1D4F2, 0xA1D4F3)
 
 ## Math Operations
 import math
-square_root = math.sqrt(16)
-absolute = abs(-5)
-maximum = max(3, 7, 1)
-minimum = min(3, 7, 1)
-power = pow(2, 10)
+0xA1E5B1 = math.sqrt(0xA1E5B2)
+0xA1E5C1 = abs(0xA1E5C2)
+0xA1E5D1 = max(0xA1E5D2, 0xA1E5D3, 0xA1E5D4)
+0xA1E5E1 = min(0xA1E5E2, 0xA1E5E3, 0xA1E5E4)
+0xA1E5F1 = pow(0xA1E5F2, 0xA1E5F3)
+
+## Modulo & Floor Division
+0xA1F6B1 = 0xA1F6B2 % 0xA1F6B3
+0xA1F6C1 = 0xA1F6C2 // 0xA1F6C3

@@ -735,7 +735,11 @@ def read_mapping(args):
 def read_layerfile(layerfile_path):
     """Extract interface point definitions from a Layerfile.
 
-    Returns a dict: hex_code -> { type, role, target?, direction? }
+    Supports two formats:
+    1. Markdown table rows: | 0xA1B2C3 | variable | input(param) | description |
+    2. Legacy YAML-style: 0xA1B2C3: type: variable, role: input(param)
+
+    Returns a dict: hex_code -> { type, role, description? }
     """
     if not os.path.exists(layerfile_path):
         return {}
@@ -745,28 +749,90 @@ def read_layerfile(layerfile_path):
 
     points = {}
 
-    hex_blocks = re.findall(
-        r'(0x[0-9A-Fa-f]{6}):\s*\n((?:  .+\n)*)',
+    # ── Format 1: Markdown table rows ──
+    # Match lines like: | 0xA1B2C3  | variable | input           | description |
+    table_rows = re.findall(
+        r'\|\s*(0x[0-9A-Fa-f]{6})\s*\|\s*(\w+)\s*\|\s*([^|]+?)\s*\|\s*([^|]*?)\s*\|',
         content
     )
+    for hex_code, htype, role, desc in table_rows:
+        points[hex_code] = {
+            'type': htype.strip(),
+            'role': role.strip(),
+            'description': desc.strip(),
+        }
 
-    for hex_code, block in hex_blocks:
-        info = {}
-        type_match = re.search(r'type:\s*(\w+)', block)
-        if type_match:
-            info['type'] = type_match.group(1)
-        role_match = re.search(r'role:\s*(.+)', block)
-        if role_match:
-            info['role'] = role_match.group(1).strip()
-        target_match = re.search(r'target:\s*(.+)', block)
-        if target_match:
-            info['target'] = target_match.group(1).strip()
-        direction_match = re.search(r'direction:\s*(\w+)', block)
-        if direction_match:
-            info['direction'] = direction_match.group(1)
-        points[hex_code] = info
+    # ── Format 2: Legacy YAML-style blocks ──
+    if not points:
+        hex_blocks = re.findall(
+            r'(0x[0-9A-Fa-f]{6}):\s*\n((?:  .+\n)*)',
+            content
+        )
+        for hex_code, block in hex_blocks:
+            info = {}
+            type_match = re.search(r'type:\s*(\w+)', block)
+            if type_match:
+                info['type'] = type_match.group(1)
+            role_match = re.search(r'role:\s*(.+)', block)
+            if role_match:
+                info['role'] = role_match.group(1).strip()
+            points[hex_code] = info
 
     return points
+
+
+def parse_cross_file_reference(ref_string):
+    """Parse a cross-file reference like 'OS.py.0xB1C4B3' into (filename, hex_code).
+
+    Returns:
+        (filename, hex_code) if valid cross-file reference
+        (None, hex_code) if it's a plain hex code
+        (None, None) if invalid
+    """
+    # Pattern: something.py.0xHEXCODE or just 0xHEXCODE
+    match = re.match(r'^([A-Za-z_]\w*\.py)\.(0x[0-9A-Fa-f]{6})$', ref_string.strip())
+    if match:
+        return match.group(1), match.group(2)
+
+    # Plain hex code
+    if re.match(r'^0x[0-9A-Fa-f]{6}$', ref_string.strip()):
+        return None, ref_string.strip()
+
+    return None, None
+
+
+def resolve_cross_file_reference(target_file, target_hex, library_path, layerfile_path):
+    """Resolve a cross-file reference by reading the target material's code.
+
+    Args:
+        target_file: Filename like 'OS.py'
+        target_hex: Hex code like '0xB1C4B3'
+        library_path: Root of code library
+        layerfile_path: Path to layerfile.md
+
+    Returns:
+        The relevant code snippet from the target material, or an error comment.
+    """
+    # Search for the target file across the library
+    for root, dirs, files in os.walk(library_path):
+        if target_file in files:
+            target_path = os.path.join(root, target_file)
+            with open(target_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Extract lines containing the target hex code (including surrounding context)
+            lines = content.split('\n')
+            snippet_lines = []
+            for line in lines:
+                if target_hex in line:
+                    snippet_lines.append(line)
+
+            if snippet_lines:
+                return '\n'.join(snippet_lines)
+            else:
+                return f"# [hex {target_hex} not found in {target_file}]"
+
+    return f"# [file {target_file} not found in library]"
 
 
 def replace_placeholders(code, mapping):
@@ -788,9 +854,55 @@ def find_references(layerfile_points):
     ]
 
 
+def find_cross_file_references(material_path):
+    """Scan a material file for cross-file reference annotations.
+
+    Looks for patterns like: # → 0xD0E1F2: description  or  → file.py.0xHEX
+    Also checks comment blocks at the top for References: section.
+
+    Returns list of (source_hex, target_file, target_hex) tuples.
+    """
+    if not os.path.exists(material_path):
+        return []
+
+    with open(material_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    refs = []
+
+    # Match inline reference annotations: → OS.py.0xB1C4B3 or → 0xD0E1F2
+    # Patterns: "→" followed by optional filename.hex or just hex
+    ref_patterns = re.findall(r'→\s*([A-Za-z_]\w*\.py\.)?(0x[0-9A-Fa-f]{6})', content)
+    for filename_part, hex_code in ref_patterns:
+        if filename_part:
+            target_file = filename_part.rstrip('.')
+            refs.append((None, target_file, hex_code))
+        else:
+            refs.append((None, None, hex_code))
+
+    # Match References: section in header comments
+    refs_section = re.search(r'#\s*References:(.+?)(?=\n#|\n\n|\Z)', content, re.DOTALL)
+    if refs_section:
+        refs_text = refs_section.group(1)
+        # Match: 0x112233→file.py.0xHEX(description)
+        header_refs = re.findall(
+            r'(0x[0-9A-Fa-f]{6})\s*→\s*([A-Za-z_]\w*\.py)\.(0x[0-9A-Fa-f]{6})',
+            refs_text
+        )
+        for src_hex, target_file, target_hex in header_refs:
+            refs.append((src_hex, target_file, target_hex))
+
+    return refs
+
+
 def assemble_recursive(material_path, mapping, library_path, layerfile_path,
                        tracker, visited=None, depth=0):
     """Recursively assemble a material, performing process-control safety checks.
+
+    Supports two types of references:
+    1. Layerfile references (type=reference): hex → expand target material code
+    2. Cross-file references (→ file.py.0xHEX): inline annotations linking to
+       specific hex interface points in other material files
 
     Args:
         material_path: Path to the material file
@@ -825,11 +937,37 @@ def assemble_recursive(material_path, mapping, library_path, layerfile_path,
         tracker.pop()
         sys.exit(1)
 
-    # Read layerfile for this material's interface points
+    # ── Resolve cross-file references (→ file.py.0xHEX annotations) ──
+    cross_refs = find_cross_file_references(material_path)
+    for src_hex, target_file, target_hex in cross_refs:
+        if not target_file or not target_hex:
+            continue
+        snippet = resolve_cross_file_reference(
+            target_file, target_hex, library_path, layerfile_path
+        )
+        # Replace the annotation comment with the actual code
+        annotation = f"→ {target_file}.{target_hex}"
+        # Replace both forms: with and without source hex prefix
+        if src_hex:
+            annotation = f"{src_hex}: {annotation}"
+        # Find the line containing the annotation and replace the comment
+        lines = code.split('\n')
+        new_lines = []
+        for line in lines:
+            if annotation in line:
+                # Replace the comment with the actual code snippet
+                indent = len(line) - len(line.lstrip())
+                prefix = ' ' * indent
+                for snippet_line in snippet.split('\n'):
+                    new_lines.append(prefix + snippet_line)
+            else:
+                new_lines.append(line)
+        code = '\n'.join(new_lines)
+
+    # ── Resolve layerfile references (type=reference) ──
     layerfile_points = read_layerfile(layerfile_path)
     references = find_references(layerfile_points)
 
-    # Resolve references first (recursive)
     for hex_code in references:
         ref_info = layerfile_points.get(hex_code, {})
         target = ref_info.get('target', '')
@@ -849,7 +987,7 @@ def assemble_recursive(material_path, mapping, library_path, layerfile_path,
         indented = '\n'.join('    ' + line for line in expanded.split('\n'))
         code = code.replace(hex_code, indented)
 
-    # Then replace variable placeholders
+    # ── Replace variable placeholders ──
     code = replace_placeholders(code, mapping)
 
     # Pop this material from chain (assembly complete for this subtree)
