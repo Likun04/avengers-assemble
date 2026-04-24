@@ -1,0 +1,15 @@
+# Dependencies
+__pycache__/
+*.pyc
+
+# Test artifacts
+_test_*.py
+_debug_*.py
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

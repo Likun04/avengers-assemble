@@ -1,0 +1,273 @@
+# Red List — Dangerous Intent Topology Graph
+# ═══════════════════════════════════════════════════════════
+#
+# Architecture: Intent-driven topology, NOT token co-occurrence.
+#
+# Each entry models a dangerous INTENT — "what the malicious code
+# wants to achieve." The topology graph captures the necessary
+# operational steps (nodes) and their dependency flow (edges).
+#
+# Safety checking is SUBGRAPH MATCHING against the assembly call
+# chain: if the current template invocation chain activates enough
+# nodes of a dangerous topology to form a connected path, it triggers.
+#
+# Design philosophy (weight-file style):
+# - Sparse recording: only store dangerous topologies, not all combinations
+# - Nodes = operational intents, Edges = data/control flow dependencies
+# - Each node maps to template patterns that can realize it
+# - Activation threshold = minimum nodes matched to trigger (the "weight")
+#
+# This is inherently extensible:
+# - New template → append to relevant node's template list
+# - New attack pattern → add a new intent topology entry
+# - Community PRs → contribute materials; maintainers handle topology
+
+version: "2.0"
+
+intents:
+
+  # ═══════════════════════════════════════════
+  # Intent: Dynamic Code Execution (代码注入)
+  # ═══════════════════════════════════════════
+  - id: INT-001
+    lang: python
+    intent: dynamic_code_execution
+    risk: CRITICAL
+    desc: "Inject and execute arbitrary code from external/untrusted input"
+    topology:
+      nodes:
+        - id: acquire_external_input
+          desc: "Obtain data from outside the material's control"
+          templates: ["input()", "sys.stdin", "http_request_body", "file_read_untrusted", "env_var_read", "argv", "socket_recv"]
+        - id: dynamic_construction
+          desc: "Build a code string or code object dynamically"
+          templates: ["string_concat", "string_format", "f_string", "chr_build", "base64_decode", "encode_chain", "compile()"]
+        - id: execute_as_code
+          desc: "Execute a constructed string/object as code"
+          templates: ["eval()", "exec()", "compile()+exec", "FunctionType", "types.CodeType"]
+        - id: bypass_sandbox
+          desc: "Circumvent restricted execution environment"
+          templates: ["__builtins__", "__import__", "getattr(builtins)", "importlib", "__class__.__subclasses__", "ctypes"]
+      edges:
+        - [acquire_external_input, dynamic_construction, "data_flow"]
+        - [dynamic_construction, execute_as_code, "data_flow"]
+        - [acquire_external_input, execute_as_code, "direct_pipe"]
+        - [bypass_sandbox, execute_as_code, "enable"]
+      threshold: 2
+      # Note: 2 nodes connected by an edge = minimum viable attack path
+      # e.g., [acquire_external_input → execute_as_code] via input()+eval()
+
+  # ═══════════════════════════════════════════
+  # Intent: Command Injection (命令注入)
+  # ═══════════════════════════════════════════
+  - id: INT-002
+    lang: python
+    intent: command_injection
+    risk: CRITICAL
+    desc: "Execute arbitrary system commands by injecting into shell calls"
+    topology:
+      nodes:
+        - id: acquire_external_input
+          desc: "Obtain untrusted user/environment data"
+          templates: ["input()", "argv", "env_var_read", "http_request_body", "socket_recv"]
+        - id: command_construction
+          desc: "Build a shell command string from external data"
+          templates: ["string_concat", "string_format", "f_string", "os.path.join", "path_concat"]
+        - id: shell_execution
+          desc: "Execute a command through the system shell"
+          templates: ["os.system()", "os.popen()", "subprocess.call(shell=True)", "subprocess.Popen(shell=True)", "subprocess.run(shell=True)"]
+      edges:
+        - [acquire_external_input, command_construction, "data_flow"]
+        - [command_construction, shell_execution, "data_flow"]
+        - [acquire_external_input, shell_execution, "direct_pipe"]
+      threshold: 2
+      # [acquire → shell_exec] alone is enough (e.g., os.system(input()))
+
+  # ═══════════════════════════════════════════
+  # Intent: Arbitrary Filesystem Access (文件系统越权)
+  # ═══════════════════════════════════════════
+  - id: INT-003
+    lang: python
+    intent: filesystem_breach
+    risk: CRITICAL
+    desc: "Read, write, or delete files outside intended scope via dynamic paths"
+    topology:
+      nodes:
+        - id: acquire_external_input
+          desc: "Obtain untrusted path or filename"
+          templates: ["input()", "argv", "env_var_read", "http_request_param"]
+        - id: path_traversal
+          desc: "Construct a path that escapes intended directory"
+          templates: ["os.path.join", "path_concat", "string_concat", "os.path.expanduser", "os.path.abspath"]
+        - id: file_write
+          desc: "Write content to the resolved path"
+          templates: ["open(path, 'w')", "open(path, 'wb')", "open(path, 'a')", "open(path, 'ab')"]
+        - id: file_read
+          desc: "Read content from the resolved path"
+          templates: ["open(path, 'r')", "open(path, 'rb')"]
+        - id: file_delete
+          desc: "Delete files or directories"
+          templates: ["os.remove()", "os.unlink()", "shutil.rmtree()", "os.rmdir()"]
+        - id: file_relocate
+          desc: "Move or rename files to unintended locations"
+          templates: ["os.rename()", "os.replace()", "shutil.move()"]
+        - id: privilege_escalation
+          desc: "Use symlinks or hardlinks for privilege escalation"
+          templates: ["os.symlink()", "os.link()"]
+      edges:
+        - [acquire_external_input, path_traversal, "data_flow"]
+        - [path_traversal, file_write, "data_flow"]
+        - [path_traversal, file_read, "data_flow"]
+        - [path_traversal, file_delete, "data_flow"]
+        - [path_traversal, file_relocate, "data_flow"]
+        - [privilege_escalation, file_read, "redirect"]
+        - [privilege_escalation, file_write, "redirect"]
+      threshold: 2
+      # [path_traversal → file_write] = arbitrary file write
+      # [acquire → path_traversal → file_delete] = arbitrary deletion
+
+  # ═══════════════════════════════════════════
+  # Intent: Data Exfiltration (数据外泄)
+  # ═══════════════════════════════════════════
+  - id: INT-004
+    lang: python
+    intent: data_exfiltration
+    risk: CRITICAL
+    desc: "Send collected data to an external server or C2 channel"
+    topology:
+      nodes:
+        - id: data_collection
+          desc: "Gather sensitive data from the system"
+          templates: ["file_read", "os.listdir()", "env_var_read", "sqlite3_query", "pickle.load()", "json.load()", "clipboard_read"]
+        - id: data_serialization
+          desc: "Serialize collected data for transmission"
+          templates: ["json.dumps()", "pickle.dumps()", "base64_encode", "str.encode()", "str()"]
+        - id: network_outbound
+          desc: "Send data to an external endpoint"
+          templates: ["requests.get/post()", "urllib.request.urlopen()", "http.client", "socket.socket+connect", "ftplib", "smtplib", "DNS_exfil"]
+      edges:
+        - [data_collection, data_serialization, "data_flow"]
+        - [data_serialization, network_outbound, "data_flow"]
+        - [data_collection, network_outbound, "direct_pipe"]
+      threshold: 2
+      # [data_collection → network_outbound] = direct exfil without serialization
+
+  # ═══════════════════════════════════════════
+  # Intent: Persistence / Stealth (持久化驻留)
+  # ═══════════════════════════════════════════
+  - id: INT-005
+    lang: python
+    intent: persistence
+    risk: HIGH
+    desc: "Establish persistent presence on the target system"
+    topology:
+      nodes:
+        - id: self_replication
+          desc: "Copy or install the malicious material to a persistent location"
+          templates: ["shutil.copy()", "file_write", "os.symlink()", "os.path.expanduser"]
+        - id: auto_start
+          desc: "Configure automatic execution on system/user startup"
+          templates: ["file_write_startup", "registry_modify", "crontab_modify", "systemd_modify", "os.environ_path"]
+        - id: process_injection
+          desc: "Inject into or control other running processes"
+          templates: ["ctypes.CDLL", "subprocess.Popen", "multiprocessing", "threading_target"]
+      edges:
+        - [self_replication, auto_start, "data_flow"]
+        - [self_replication, process_injection, "enable"]
+      threshold: 2
+
+  # ═══════════════════════════════════════════
+  # Intent: Environment Tampering (环境篡改)
+  # ═══════════════════════════════════════════
+  - id: INT-006
+    lang: python
+    intent: environment_tampering
+    risk: HIGH
+    desc: "Modify runtime environment to alter behavior or load malicious modules"
+    topology:
+      nodes:
+        - id: path_hijack
+          desc: "Manipulate module search paths to load attacker-controlled code"
+          templates: ["sys.path.insert()", "sys.path.append()", "PYTHONPATH_modify"]
+        - id: env_poison
+          desc: "Modify environment variables to alter process behavior"
+          templates: ["os.environ[key]=val", "os.environ.pop()"]
+        - id: dynamic_import
+          desc: "Import modules from attacker-controlled paths"
+          templates: ["__import__()", "importlib.import_module()", "importlib.reload()"]
+      edges:
+        - [path_hijack, dynamic_import, "enable"]
+        - [env_poison, dynamic_import, "enable"]
+        - [path_hijack, env_poison, "cascade"]
+      threshold: 2
+
+  # ═══════════════════════════════════════════
+  # Intent: Unsafe Deserialization (反序列化攻击)
+  # ═══════════════════════════════════════════
+  - id: INT-007
+    lang: python
+    intent: unsafe_deserialization
+    risk: CRITICAL
+    desc: "Deserialize untrusted data that can execute arbitrary code on load"
+    topology:
+      nodes:
+        - id: acquire_untrusted_data
+          desc: "Obtain serialized data from untrusted source"
+          templates: ["file_read_untrusted", "socket_recv", "http_request_body", "input()"]
+        - id: deserialize
+          desc: "Deserialize data using an unsafe format"
+          templates: ["pickle.load()", "pickle.loads()", "marshal.loads()", "yaml.load(unsafe)", "shelve.open()"]
+        - id: execute_on_load
+          desc: "The deserialized payload executes code automatically"
+          templates: ["__reduce__", "__setstate__", "custom_unpickler"]
+      edges:
+        - [acquire_untrusted_data, deserialize, "data_flow"]
+        - [deserialize, execute_on_load, "implicit"]
+      threshold: 2
+
+  # ═══════════════════════════════════════════
+  # Intent: Obfuscation (混淆对抗)
+  # ═══════════════════════════════════════════
+  - id: INT-008
+    lang: python
+    intent: obfuscation
+    risk: HIGH
+    desc: "Use encoding/obfuscation chains to hide actual intent from analysis"
+    topology:
+      nodes:
+        - id: string_obfuscation
+          desc: "Build strings from encoded fragments"
+          templates: ["chr_chain", "base64_decode", "rot13", "hex_decode", "encode_chain"]
+        - id: dynamic_resolution
+          desc: "Resolve function names or modules at runtime"
+          templates: ["getattr()", "__builtins__", "__import__", "globals()['name']", "locals()['name']"]
+        - id: layered_construction
+          desc: "Multiple layers of encoding/construction to defeat static analysis"
+          templates: ["eval(decode(encode(x)))", "exec(decode(decode(x)))", "compile(decode(x))"]
+      edges:
+        - [string_obfuscation, dynamic_resolution, "data_flow"]
+        - [dynamic_resolution, layered_construction, "enable"]
+        - [string_obfuscation, layered_construction, "direct"]
+      threshold: 2
+
+# ═══════════════════════════════════════════════════════════
+# Template-to-Intent Quick Lookup (维护者参考)
+# ═══════════════════════════════════════════════════════════
+#
+# This section is NOT used by the scanner. It serves as a
+# reference for maintainers when adding new materials:
+# "if a new template does X, which intent nodes does it map to?"
+#
+# template_registry:
+#   eval():
+#     - INT-001.execute_as_code
+#     - INT-002.shell_execution (indirect)
+#     - INT-008.layered_construction
+#   open(path, 'w'):
+#     - INT-003.file_write
+#   requests.post():
+#     - INT-004.network_outbound
+#   pickle.loads():
+#     - INT-007.deserialize
+#   sys.path.append():
+#     - INT-006.path_hijack
