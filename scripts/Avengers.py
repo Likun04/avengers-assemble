@@ -733,13 +733,22 @@ def read_mapping(args):
 
 
 def read_layerfile(layerfile_path):
-    """Extract interface point definitions from a Layerfile.
+    """Parse the Layerfile (genome atlas) and return interface point definitions.
 
-    Supports two formats:
-    1. Markdown table rows: | 0xA1B2C3 | variable | input(param) | description |
-    2. Legacy YAML-style: 0xA1B2C3: type: variable, role: input(param)
+    The layerfile uses three embedded formats in markdown fenced code blocks:
+    - JSON [2]: machine-readable interface contracts (primary data source)
+    - CSV  [1]: flat index for AI querying
+    - YAML [3]: material dependency/relationship tree
 
-    Returns a dict: hex_code -> { type, role, description? }
+    This parser extracts from the JSON block first (authoritative), falling
+    back to CSV if JSON is not found. YAML is used separately for dependency
+    resolution.
+
+    Returns:
+        dict: hex_code -> {
+            type, role, param_type, file, section, desc,
+            target_file?, target_hex?, alias?
+        }
     """
     if not os.path.exists(layerfile_path):
         return {}
@@ -749,36 +758,220 @@ def read_layerfile(layerfile_path):
 
     points = {}
 
-    # ── Format 1: Markdown table rows ──
-    # Match lines like: | 0xA1B2C3  | variable | input           | description |
-    table_rows = re.findall(
-        r'\|\s*(0x[0-9A-Fa-f]{6})\s*\|\s*(\w+)\s*\|\s*([^|]+?)\s*\|\s*([^|]*?)\s*\|',
-        content
+    # ── Extract JSON block (section [2]) ──
+    json_match = re.search(
+        r'```json\s*\n(.*?)\n```',
+        content, re.DOTALL
     )
-    for hex_code, htype, role, desc in table_rows:
-        points[hex_code] = {
-            'type': htype.strip(),
-            'role': role.strip(),
-            'description': desc.strip(),
-        }
+    if json_match:
+        try:
+            import json as _json
+            data = _json.loads(json_match.group(1))
+            iface = data.get('interface_points', {})
+            for hex_code, info in iface.items():
+                # Handle alias keys like "0xA1B2C3_s" — register under the
+                # real hex if alias is present, otherwise use the key as-is
+                real_hex = info.get('alias', hex_code).rstrip('_a_g_s')
+                if re.match(r'^0x[0-9A-Fa-f]{6}$', real_hex):
+                    entry = {
+                        'type': info.get('type', 'variable'),
+                        'role': info.get('role', 'input'),
+                        'param_type': info.get('param_type', 'any'),
+                        'file': info.get('file', ''),
+                        'section': info.get('section', ''),
+                        'desc': info.get('desc', ''),
+                    }
+                    # Reference fields
+                    if info.get('type') == 'reference':
+                        entry['target_file'] = info.get('target_file', '')
+                        entry['target_hex'] = info.get('target_hex', '')
+                    # Alias note
+                    if info.get('alias'):
+                        entry['alias_key'] = hex_code
+                    points[real_hex] = entry
+        except _json.JSONDecodeError:
+            pass  # Fall through to CSV
 
-    # ── Format 2: Legacy YAML-style blocks ──
+    # ── Fallback: CSV block (section [1]) ──
     if not points:
-        hex_blocks = re.findall(
-            r'(0x[0-9A-Fa-f]{6}):\s*\n((?:  .+\n)*)',
-            content
+        csv_match = re.search(
+            r'```csv\s*\n(.*?)\n```',
+            content, re.DOTALL
         )
-        for hex_code, block in hex_blocks:
-            info = {}
-            type_match = re.search(r'type:\s*(\w+)', block)
-            if type_match:
-                info['type'] = type_match.group(1)
-            role_match = re.search(r'role:\s*(.+)', block)
-            if role_match:
-                info['role'] = role_match.group(1).strip()
-            points[hex_code] = info
+        if csv_match:
+            csv_lines = csv_match.group(1).strip().split('\n')
+            if len(csv_lines) >= 2:
+                header = [h.strip() for h in csv_lines[0].split(',')]
+                for line in csv_lines[1:]:
+                    cols = [c.strip() for c in line.split(',')]
+                    if len(cols) < 4:
+                        continue
+                    hex_code = cols[0]
+                    if not re.match(r'^0x[0-9A-Fa-f]{6}$', hex_code):
+                        continue
+                    row = dict(zip(header, cols))
+                    points[hex_code] = {
+                        'type': row.get('type', 'variable'),
+                        'role': row.get('role', 'input'),
+                        'file': row.get('file', ''),
+                        'section': row.get('section', ''),
+                        'desc': row.get('description', ''),
+                        'param_type': 'any',
+                    }
+                    if row.get('type') == 'reference':
+                        points[hex_code]['target_file'] = row.get('target_file', '')
+                        points[hex_code]['target_hex'] = row.get('target_hex', '')
 
     return points
+
+
+def read_layerfile_dependencies(layerfile_path):
+    """Parse the YAML block (section [3]) for material dependency relationships.
+
+    Returns:
+        dict: material_name -> {
+            file, desc, depends_on, cross_references, imported_by
+        }
+    """
+    if not os.path.exists(layerfile_path):
+        return {}
+
+    with open(layerfile_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    deps = {}
+
+    yaml_match = re.search(
+        r'```yaml\s*\n(.*?)\n```',
+        content, re.DOTALL
+    )
+    if not yaml_match:
+        return deps
+
+    yaml_text = yaml_match.group(1)
+
+    # Simple state-machine parser for the YAML dependency tree
+    # We only need: material name, file path, depends_on list, cross_references
+    current_layer = None
+    current_material = None
+    in_cross_refs = False
+    in_depends = False
+    in_imported = False
+
+    for line in yaml_text.split('\n'):
+        stripped = line.strip()
+        if not stripped or stripped.startswith('#'):
+            continue
+
+        indent = len(line) - len(line.lstrip())
+
+        # Layer level (indent ~0-2)
+        if indent <= 2 and not stripped.startswith('-'):
+            if current_material and current_layer:
+                deps[f"{current_layer}.{current_material}"] = current_material_info
+            current_material = None
+            layer_match = re.match(r'^(Level\d):', stripped)
+            if layer_match:
+                current_layer = layer_match.group(1)
+                in_cross_refs = False
+                in_depends = False
+                in_imported = False
+            continue
+
+        # Material name (indent ~4)
+        if indent == 4 and current_layer and not stripped.startswith('-'):
+            key, _, val = stripped.partition(':')
+            if val.strip() and current_material:
+                # This is a property of the current material
+                prop = key.strip()
+                if prop == 'file':
+                    current_material_info['file'] = val.strip()
+                elif prop == 'desc':
+                    current_material_info['desc'] = val.strip()
+                elif prop == 'hex_count':
+                    current_material_info['hex_count'] = int(val.strip())
+                elif prop == 'depends_on':
+                    dep_val = val.strip()
+                    if dep_val.startswith('['):
+                        current_material_info['depends_on'] = _parse_inline_list(dep_val)
+                    else:
+                        in_depends = True
+                        in_cross_refs = False
+                        in_imported = False
+                elif prop == 'imported_by':
+                    ib_val = val.strip()
+                    if ib_val.startswith('['):
+                        current_material_info['imported_by'] = _parse_inline_list(ib_val)
+                    else:
+                        in_imported = True
+                        in_depends = False
+                        in_cross_refs = False
+                elif prop == 'cross_references':
+                    cr_val = val.strip()
+                    if cr_val.startswith('['):
+                        current_material_info['cross_references'] = _parse_cross_ref_list(cr_val)
+                    else:
+                        in_cross_refs = True
+                        in_depends = False
+                        in_imported = False
+            elif not val.strip():
+                # This is a new material name
+                if current_material and current_layer:
+                    deps[f"{current_layer}.{current_material}"] = current_material_info
+                current_material = key.strip()
+                current_material_info = {
+                    'file': '',
+                    'desc': '',
+                    'depends_on': [],
+                    'imported_by': [],
+                    'cross_references': [],
+                }
+                in_cross_refs = False
+                in_depends = False
+                in_imported = False
+            continue
+
+        # List items under depends_on / imported_by / cross_references
+        if stripped.startswith('- ') and current_material_info:
+            item = stripped[2:].strip()
+            if in_depends:
+                current_material_info['depends_on'].append(item.strip('"').strip("'"))
+            elif in_imported:
+                current_material_info['imported_by'].append(item.strip('"').strip("'"))
+            elif in_cross_refs:
+                ref = _parse_cross_ref_dict(item)
+                if ref:
+                    current_material_info['cross_references'].append(ref)
+            continue
+
+    # Flush last
+    if current_material and current_layer:
+        deps[f"{current_layer}.{current_material}"] = current_material_info
+
+    return deps
+
+
+def _parse_cross_ref_list(text):
+    """Parse a YAML inline list of cross-reference dicts."""
+    # Simple approach: find all - { ... } blocks
+    refs = []
+    for match in re.finditer(r'\{\s*source_hex:\s*"?(\S+?)"?\s*,\s*target_file:\s*"?(\S+?)"?\s*,\s*target_hex:\s*"?(\S+?)"?\s*,\s*desc:\s*"?([^}]*?)"?\s*\}', text):
+        refs.append({
+            'source_hex': match.group(1),
+            'target_file': match.group(2),
+            'target_hex': match.group(3),
+            'desc': match.group(4).strip(),
+        })
+    return refs
+
+
+def _parse_cross_ref_dict(item):
+    """Parse a single cross-reference list item."""
+    item = item.strip()
+    if item.startswith('{'):
+        results = _parse_cross_ref_list(item)
+        return results[0] if results else None
+    return None
 
 
 def parse_cross_file_reference(ref_string):
@@ -847,11 +1040,14 @@ def replace_placeholders(code, mapping):
 
 
 def find_references(layerfile_points):
-    """Return list of hex codes that are type=reference."""
-    return [
-        hex_code for hex_code, info in layerfile_points.items()
-        if info.get('type') == 'reference'
-    ]
+    """Return list of (hex_code, target_file, target_hex) for type=reference entries."""
+    refs = []
+    for hex_code, info in layerfile_points.items():
+        if info.get('type') == 'reference':
+            target_file = info.get('target_file', '')
+            target_hex = info.get('target_hex', '')
+            refs.append((hex_code, target_file, target_hex))
+    return refs
 
 
 def find_cross_file_references(material_path):
@@ -964,19 +1160,31 @@ def assemble_recursive(material_path, mapping, library_path, layerfile_path,
                 new_lines.append(line)
         code = '\n'.join(new_lines)
 
-    # ── Resolve layerfile references (type=reference) ──
+    # ── Resolve layerfile references (type=reference, from JSON block) ──
     layerfile_points = read_layerfile(layerfile_path)
     references = find_references(layerfile_points)
 
-    for hex_code in references:
-        ref_info = layerfile_points.get(hex_code, {})
-        target = ref_info.get('target', '')
-        if not target:
+    for ref_hex, target_file, target_hex in references:
+        # target_file is like "OS.py", target_hex is like "0xB1C4B3"
+        if not target_file or not target_hex:
+            # Legacy: fallback to old 'target' field
+            ref_info = layerfile_points.get(ref_hex, {})
+            target = ref_info.get('target', '')
+            if not target:
+                continue
+            target_path = os.path.join(library_path, target)
+        else:
+            # New format: resolve cross-file reference
+            snippet = resolve_cross_file_reference(
+                target_file, target_hex, library_path, layerfile_path
+            )
+            # Replace the hex placeholder with the resolved snippet
+            indented = '\n'.join('    ' + line for line in snippet.split('\n'))
+            code = code.replace(ref_hex, indented)
             continue
 
-        target_path = os.path.join(library_path, target)
         if not os.path.exists(target_path):
-            code = code.replace(hex_code, "# [unresolved reference: {}]".format(target))
+            code = code.replace(ref_hex, "# [unresolved reference: {}]".format(target))
             continue
 
         # Recursively expand the referenced material
@@ -985,7 +1193,7 @@ def assemble_recursive(material_path, mapping, library_path, layerfile_path,
             tracker, visited, depth + 1
         )
         indented = '\n'.join('    ' + line for line in expanded.split('\n'))
-        code = code.replace(hex_code, indented)
+        code = code.replace(ref_hex, indented)
 
     # ── Replace variable placeholders ──
     code = replace_placeholders(code, mapping)
