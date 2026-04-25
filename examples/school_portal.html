@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>星辉中学 — 官方门户</title>
+  <style>
+    /* ── 全局重置 ── */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; color: #333; background: #f8f9fa; }
+    a { text-decoration: none; color: inherit; }
+
+    /* ── 导航栏 ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: #1a3a5c; color: #fff;
+      display: flex; align-items: center; padding: 0 40px; height: 64px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .nav-logo { font-size: 1.3rem; font-weight: 700; letter-spacing: 2px; margin-right: auto; }
+    .nav-logo span { color: #f0c040; }
+    .nav-menu { display: flex; gap: 32px; list-style: none; }
+    .nav-menu li a {
+      font-size: 0.95rem; padding: 4px 0; border-bottom: 2px solid transparent;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .nav-menu li a:hover { color: #f0c040; border-bottom-color: #f0c040; cursor: pointer; }
+
+    /* ── 英雄横幅 ── */
+    #hero {
+      background: linear-gradient(135deg, #1a3a5c 0%, #2e6da4 60%, #4a9fd4 100%);
+      color: #fff; text-align: center;
+      padding: 100px 20px 80px;
+    }
+    #hero h1 { font-size: 2.8rem; margin-bottom: 16px; letter-spacing: 4px; }
+    #hero p  { font-size: 1.15rem; opacity: 0.85; margin-bottom: 36px; }
+    .btn-primary {
+      display: inline-block; padding: 14px 40px;
+      background: #f0c040; color: #1a3a5c;
+      border-radius: 30px; font-weight: 700; font-size: 1rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
+
+    /* ── 公共区块 ── */
+    section { padding: 60px 40px; }
+    section h2 { font-size: 1.8rem; color: #1a3a5c; margin-bottom: 8px; text-align: center; }
+    .section-divider {
+      width: 60px; height: 4px; background: #f0c040;
+      margin: 0 auto 40px; border-radius: 2px;
+    }
+
+    /* ── 公告卡片 ── */
+    #news { background: #fff; }
+    .announcement-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+    .announcement-card {
+      background: #f8f9fa; border-left: 4px solid #2e6da4;
+      border-radius: 8px; padding: 20px 24px;
+      transition: box-shadow 0.2s;
+    }
+    .announcement-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+    .announcement-card .date { font-size: 0.82rem; color: #888; margin-bottom: 8px; }
+    .announcement-card h3 { font-size: 1.05rem; color: #1a3a5c; margin-bottom: 10px; }
+    .announcement-card p  { font-size: 0.9rem; color: #555; line-height: 1.6; }
+
+    /* ── 院系卡片 ── */
+    #departments { background: #eef4fb; }
+    .dept-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 24px; }
+    .dept-card {
+      background: #fff; border-radius: 12px;
+      padding: 32px 20px; text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .dept-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+    .dept-card .icon { font-size: 2.4rem; margin-bottom: 12px; }
+    .dept-card h3 { font-size: 1.05rem; color: #1a3a5c; margin-bottom: 8px; }
+    .dept-card p  { font-size: 0.85rem; color: #666; line-height: 1.55; }
+
+    /* ── 页脚 ── */
+    footer {
+      background: #1a3a5c; color: #aac4de;
+      text-align: center; padding: 32px 20px;
+      font-size: 0.9rem; line-height: 1.8;
+    }
+    footer a { color: #f0c040; }
+  </style>
+</head>
+<body>
+
+<!-- ── 导航栏 ── -->
+<nav>
+  <div class="nav-logo">⭐ <span>星辉</span>中学</div>
+  <ul class="nav-menu" id="nav-menu"></ul>
+</nav>
+
+<!-- ── 英雄横幅 ── -->
+<section id="hero">
+  <h1>欢迎来到星辉中学</h1>
+  <p>厚德 · 博学 · 求真 · 笃行 — 培育未来的领航者</p>
+  <span class="btn-primary" onclick="handleNavClick('news')">了解更多 →</span>
+</section>
+
+<!-- ── 公告栏 ── -->
+<section id="news">
+  <h2>校园公告</h2>
+  <div class="section-divider"></div>
+  <div class="announcement-grid" id="announcement-container"></div>
+</section>
+
+<!-- ── 院系介绍 ── -->
+<section id="departments">
+  <h2>院系介绍</h2>
+  <div class="section-divider"></div>
+  <div class="dept-grid" id="dept-container"></div>
+</section>
+
+<!-- ── 页脚 ── -->
+<footer>
+  <p>© 2026 星辉中学 · 版权所有</p>
+  <p>地址：深圳市南山区星辉大道88号 &nbsp;|&nbsp; 联系我们：<a href="mailto:info@xinghui.edu.cn">info@xinghui.edu.cn</a></p>
+</footer>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// 组件 1：数据初始化
+// 素材来源：data_structure.ts → "Dict (Map / Object)" + "List (Array)"
+// hex 映射：0xD1E3D1→announcementItem，0xD1E2C1→announcements
+// ══════════════════════════════════════════════════════════════
+
+// 公告数据（0xD1E2C1 映射为 announcements，0xD1E3D1 映射为每个 item 字典）
+const announcements = [
+  { id: 1, title: "2026年春季招生简章正式发布", date: "2026-04-20", summary: "本校2026年春季招生工作正式启动，欢迎广大初中毕业生踊跃报考，名额有限，请尽早提交申请材料。" },
+  { id: 2, title: "五四青年节文艺汇演通知",     date: "2026-04-18", summary: "定于5月4日下午3时在大礼堂举行五四青年节文艺汇演，各班级请于4月28日前报送节目单。" },
+  { id: 3, title: "2026届高考百日誓师大会",     date: "2026-04-15", summary: "我校2026届高三学子百日誓师大会圆满举行，全体师生共同为高考健儿加油鼓劲，祝旗开得胜。" },
+  { id: 4, title: "校园安全月活动安排公告",     date: "2026-04-10", summary: "本月为学校安全教育月，将开展消防演练、心理健康讲座及交通安全宣传等系列活动，请各班配合。" },
+  { id: 5, title: "图书馆新书推荐（4月号）",   date: "2026-04-05", summary: "本月新到馆藏图书共计312册，涵盖科技、文学、历史等类别，欢迎同学们前往阅览室借阅。" },
+  { id: 6, title: "期中考试时间安排通知",       date: "2026-04-01", summary: "本学期期中考试定于4月28日至4月30日举行，请各年级同学提前做好复习准备，按时参加考试。" }
+];
+
+// 院系数据（0xD1E2C1 映射为 departments，0xD1E3D1 映射为每个 dept 字典）
+const departments = [
+  { name: "语文与文学院",   icon: "📖", description: "深耕语言文字之美，培养学生的阅读、写作与文学鉴赏能力。" },
+  { name: "数学与逻辑院",   icon: "📐", description: "以严谨的逻辑思维为核心，构建学生的数学基础与解题能力。" },
+  { name: "理科综合院",     icon: "🔬", description: "涵盖物理、化学、生物，引导学生探索自然科学的奥秘。" },
+  { name: "外语学院",       icon: "🌍", description: "英语、日语双轨并进，培养具备国际视野的复合型人才。" },
+  { name: "信息技术学院",   icon: "💻", description: "编程、人工智能与数据分析，培育面向未来的数字原住民。" },
+  { name: "艺术与体育学院", icon: "🎨", description: "音乐、美术、体育全面发展，塑造健康向上的青春活力。" }
+];
+
+// 导航菜单数据（0xD1E2C1 映射为 menuItems）
+const menuItems = [
+  { label: "首页",   target: "hero" },
+  { label: "校园公告", target: "news" },
+  { label: "院系介绍", target: "departments" },
+  { label: "关于我们", target: "about" }
+];
+
+// ══════════════════════════════════════════════════════════════
+// 组件 2：渲染函数
+// 素材来源：function.ts → "Basic Function"
+//          control_flow.ts → "For Loop (Iterable)"
+//          string.ts → "Multiline String" + "Template Literal"
+// hex 映射：0xF4A5C1→renderAnnouncements，0xC1D2E5→ann
+// ══════════════════════════════════════════════════════════════
+
+// renderAnnouncements（0xF4A5C1 映射，参数 0xF4A5C2 映射为 container）
+function renderAnnouncements(container) {
+  // control_flow.ts: For Loop (Iterable) — 0xC1D2E1 映射为 announcements
+  for (const ann of announcements) {
+    // string.ts: Multiline String — 0xE1F3E1 映射为 cardHTML
+    const cardHTML = `
+      <div class="announcement-card">
+        <div class="date">${ann.date}</div>
+        <h3>${ann.title}</h3>
+        <p>${ann.summary}</p>
+      </div>`;
+    // data_structure.ts: "List.push" 语义 → innerHTML 追加
+    container.innerHTML += cardHTML;
+  }
+}
+
+// renderDepartments（0xF4A5C1 第二映射，参数 0xF4A5C2 映射为 container）
+function renderDepartments(container) {
+  // control_flow.ts: For Loop (Iterable) — 0xC1D2E1 映射为 departments
+  for (const dept of departments) {
+    // string.ts: Multiline String — 0xE1F3E1 映射为 cardHTML
+    const cardHTML = `
+      <div class="dept-card">
+        <div class="icon">${dept.icon}</div>
+        <h3>${dept.name}</h3>
+        <p>${dept.description}</p>
+      </div>`;
+    container.innerHTML += cardHTML;
+  }
+}
+
+// renderNavMenu（0xF4A5C1 第三映射）
+function renderNavMenu(container) {
+  // control_flow.ts: For Loop (Iterable) — 0xC1D2E1 映射为 menuItems
+  for (const item of menuItems) {
+    // string.ts: Template Literal — 0xE1F2D5 映射为 linkHTML
+    const linkHTML = `<li><a onclick="handleNavClick('${item.target}')">${item.label}</a></li>`;
+    container.innerHTML += linkHTML;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 组件 3：交互函数
+// 素材来源：function.ts → "Basic Function"
+//          control_flow.ts → "If-Else"
+// hex 映射：0xF4A5C1→handleNavClick，0xC1D2C1→targetId
+// ══════════════════════════════════════════════════════════════
+
+// handleNavClick（0xF4A5C1，0xF4A5C2 映射为 targetId）
+function handleNavClick(targetId) {
+  // control_flow.ts: If-Else — 0xC1D2C1 映射为 targetId
+  if (targetId === "hero") {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } else if (targetId === "news") {
+    document.getElementById("news").scrollIntoView({ behavior: "smooth" });
+  } else if (targetId === "departments") {
+    document.getElementById("departments").scrollIntoView({ behavior: "smooth" });
+  } else {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 启动：DOMContentLoaded 后执行渲染
+// ══════════════════════════════════════════════════════════════
+document.addEventListener("DOMContentLoaded", function() {
+  renderNavMenu(document.getElementById("nav-menu"));
+  renderAnnouncements(document.getElementById("announcement-container"));
+  renderDepartments(document.getElementById("dept-container"));
+});
+</script>
+
+</body>
+</html>

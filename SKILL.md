@@ -40,6 +40,54 @@ enabling **recursive assembly** from Level 3 (architectural) down to Level 1 (at
    derived from business pseudocode semantics, not invented by the Agent.
 5. **Safety first**: All community-sourced materials are scanned before assembly.
    The Agent performs semantic-level safety judgment that no static scanner can replicate.
+6. **Step echo is non-negotiable**: Every step MUST be explicitly echoed with sequential labels.
+   Skipping step labels = failed assembly. This is how the user knows the process ran correctly.
+
+## 强制回显标号机制 (Mandatory Step Echo Mechanism)
+
+### 设计初衷
+
+Prompt 约束无法 100% 阻止 AI 直接生成代码（实测遵从率 ~70%）。
+本机制采用**暴露式设计**：不让 AI "忍住"，而是让违规行为**无处藏身**。
+
+当 AI 跳过步骤直接输出代码时，回显标号会断裂——
+**人类审查者一眼就能看出流程没有完整执行**。
+
+### 强制输出格式
+
+每个 Step 的输出**必须**以以下格式包裹：
+
+```
+=== STEP X/6 | [步骤名称] | 状态：进行中 ===
+
+（本步骤的实际内容）
+
+=== STEP X/6 | 完成 ✓ ===
+```
+
+### 格式约束
+
+1. **标号连续性**：STEP 1 → 2 → 3 → 4 → 5 → 6，不得跳跃
+2. **状态标记**：每个 Step 必须有「状态：进行中」开头和「完成 ✓」结尾
+3. **内容隔离**：Step 之间的内容必须被标号块隔离，不得连写
+4. **伪代码纯文本约束**：Step 1 的输出中**不得出现任何代码语法字符**
+   - 禁止：`{ } ( ) = ; < > [ ] function def class`
+   - 允许：中文、英文、数字、标点、换行
+
+### 违规检测（人类审查）
+
+| 现象 | 判定 |
+|------|------|
+| 标号从 1 直接跳到 6 | AI 跳过了中间步骤 → 产物无效 |
+| Step 1 内容出现 `{` 或 `function` | AI 在伪代码阶段直接写代码 → 产物无效 |
+| 标号重复（两个 STEP 2） | AI 流程混乱 → 产物无效 |
+| 缺少「完成 ✓」标记 | AI 未确认步骤完成 → 产物无效 |
+
+### 对用户的意义
+
+- **可审查**：标号断了 = 流程没走完 = 产物不可信
+- **无需改 AI 架构**：纯 Prompt 层面实现
+- **失败模式明确**：不是"为什么出错了"，而是"标号断了，步骤 X 被跳过了"
 
 ## Code Library Structure
 
@@ -164,6 +212,15 @@ It records for each material file:
 
 ### Step 0: Identify Runtime Environment
 
+**输出格式强制**：
+```
+=== STEP 0/6 | 识别运行环境 | 状态：进行中 ===
+
+（本步骤内容）
+
+=== STEP 0/6 | 完成 ✓ ===
+```
+
 Detect the target programming language, platform, available libraries, and version constraints.
 This determines which subdirectory of the code library to search.
 If the project has a project-level skill (`.workbuddy/skills/avengers-assemble/`), use it;
@@ -173,6 +230,22 @@ Project-level skill inherits user-level base materials. Same-name files in proje
 override user-level. Project-level Layerfile is a full copy, independently maintained.
 
 ### Step 1: Write Business Pseudocode
+
+**输出格式强制**：
+```
+=== STEP 1/6 | 业务伪代码 | 状态：进行中 ===
+
+（本步骤内容，纯中文/英文描述，禁止任何代码语法字符）
+
+=== STEP 1/6 | 完成 ✓ ===
+```
+
+⛔ **伪代码格式锁死**：
+- 只允许：中文、英文、数字、标点（。，！？等）
+- 禁止出现任何代码语法字符：`{ } ( ) = ; < > [ ] function def class =>`
+- 每行必须以中文/英文动词开头
+  - ✅ 正确：`"渲染公告列表，循环遍历 announcements 数组"`
+  - ❌ 错误：`"for(let i=0; i<announcements.length; i++)"` ← 判定违规
 
 Decompose the requirement into structured business-level pseudocode.
 Pseudocode describes WHAT the system does, not HOW it is coded.
@@ -189,13 +262,38 @@ Example:
 
 ### Step 2: Search the Layerfile
 
+**输出格式强制**：
+```
+=== STEP 2/6 | Layerfile匹配 | 状态：进行中 ===
+
+（本步骤内容：匹配到的素材列表 + hex 关键点）
+
+=== STEP 2/6 | 完成 ✓ ===
+```
+
 Read `references/layerfile.md`. Match each line of business pseudocode to materials
 by scanning **function descriptions** and **keywords**. Use semantic understanding —
 "排序" matches "bubble-sort", "查找" matches "binary-search".
 
 Prioritize: first match Level 3 materials (most complete), fall back to Level 2, then Level 1.
 
+Output format for matches:
+```
+| 业务需求 | 匹配素材 | 层级 | hex 关键点 |
+|---------|---------|------|-----------|
+| ...     | ...     | ...  | ...       |
+```
+
 ### Step 2.5: Safety Gate (NON-OPTIONAL)
+
+**输出格式强制**：
+```
+=== STEP 2.5/6 | 安全门 | 状态：进行中 ===
+
+（本步骤内容：每个选中素材的意图拓扑检查结果）
+
+=== STEP 2.5/6 | 完成 ✓ ===
+```
 
 For every material selected in Step 2:
 
@@ -221,7 +319,23 @@ For every material selected in Step 2:
 The Agent's semantic judgment is the FINAL authority. Avengers.py checks for
 intent topology activation in the call chain; the Agent makes the decision.
 
+Output format for safety gate:
+```
+| Intent ID | 意图 | 激活节点检查 | 判定 |
+|-----------|-----|------------|------|
+| ...       | ... | ...        | ✅ PASS / ❌ BLOCKED |
+```
+
 ### Step 3: Read Materials and Identify Interface Points
+
+**输出格式强制**：
+```
+=== STEP 3/6 | 读取素材+识别接口点 | 状态：进行中 ===
+
+（本步骤内容：读取的素材片段 + 识别出的 hex 占位符列表）
+
+=== STEP 3/6 | 完成 ✓ ===
+```
 
 For each matched material, open the source file in `assets/code-library/`.
 Read the code. Note all hex placeholders found in the code — these are the interface points
@@ -229,8 +343,24 @@ that need to be resolved during assembly.
 
 ### Step 4: Build Hex-to-Business Mapping
 
+**输出格式强制**：
+```
+=== STEP 4/6 | Hex→业务命名映射 | 状态：进行中 ===
+
+（本步骤内容：映射表）
+
+=== STEP 4/6 | 完成 ✓ ===
+```
+
 Derive variable/function names from business pseudocode semantics.
 Map each hex interface point to a business-meaningful name.
+
+Output format for mapping table:
+```
+| Hex 占位符 | 业务名称 | 来源素材 | 业务含义 |
+|-----------|---------|---------|---------|
+| ...       | ...     | ...     | ...     |
+```
 
 Example mapping:
 ```
@@ -243,6 +373,15 @@ Example mapping:
 ```
 
 ### Step 5: Recursive Assembly
+
+**输出格式强制**：
+```
+=== STEP 5/6 | 递归拼装 | 状态：进行中 ===
+
+（本步骤内容：各组件的拼装描述，可含伪代码）
+
+=== STEP 5/6 | 完成 ✓ ===
+```
 
 Starting from the top-level material:
 1. For each `type: reference` interface point → open the referenced material file,
@@ -267,9 +406,23 @@ python Avengers.py <material> --mapping ... --recursive --library <path>
 
 ### Step 6: Validate
 
+**输出格式强制**：
+```
+=== STEP 6/6 | 验证+拼装执行 | 状态：进行中 ===
+
+（本步骤内容：验证结果 + 最终产物路径）
+
+=== STEP 6/6 | 全部完成 ✓ ===
+```
+
 Run syntax validation on the assembled output (e.g., `python -m py_compile`).
 If errors occur, resolve by selecting better-matching materials or adjusting assembly order.
 NEVER fix errors by generating new code — only reassemble from library materials.
+
+Also perform **post-assembly safety scan** on the final output:
+- Re-scan the assembled file against `references/red_list.yaml`
+- Verify no dangerous intent topologies are activated in the final code
+- This is the "defense-in-depth" check after assembly
 
 ## Open Source & Distribution
 
@@ -319,3 +472,9 @@ cannot be stripped or tampered with via PR.
    available libraries, and project naming conventions.
 7. **Safety discipline**: NEVER skip Step 2.5. Every material is scanned, every
    positive finding is semantically judged. No exceptions.
+8. **Step echo discipline**: Every step MUST be wrapped with `=== STEP X/6 | ... ===` labels.
+   Skipping labels, jumping steps, or omitting `完成 ✓` markers = failed assembly.
+   This is the user's primary quality signal — if labels are broken, the output is invalid.
+9. **Pseudocode purity**: Step 1 output MUST NOT contain any code syntax characters.
+   `{ } ( ) = ; < > [ ] function def class` appearing in Step 1 = violation.
+   This forces the Agent to think in business logic before touching code.
